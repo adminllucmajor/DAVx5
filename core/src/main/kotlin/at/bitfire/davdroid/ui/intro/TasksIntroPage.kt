@@ -1,0 +1,28 @@
+/*
+ * Copyright © All Contributors. See LICENSE and AUTHORS in the root directory for details.
+ */
+
+package at.bitfire.davdroid.ui.intro
+
+import androidx.compose.runtime.Composable
+import at.bitfire.davdroid.settings.SettingsManager
+import at.bitfire.davdroid.sync.TasksAppManager
+import at.bitfire.davdroid.ui.TasksCard
+import at.bitfire.davdroid.ui.TasksViewModel
+import javax.inject.Inject
+
+class TasksIntroPage @Inject constructor(
+    private val settingsManager: SettingsManager,
+    private val tasksAppManager: TasksAppManager
+): IntroPage() {
+
+    override fun getShowPolicy(): ShowPolicy {
+        return ShowPolicy.DONT_SHOW
+    }
+
+    @Composable
+    override fun ComposePage() {
+        TasksCard()
+    }
+
+}

@@ -1,0 +1,153 @@
+/*
+ * Copyright © All Contributors. See LICENSE and AUTHORS in the root directory for details.
+ */
+
+package at.bitfire.davdroid.resource
+
+import android.content.ContentUris
+import android.content.ContentValues
+import android.content.Context
+import android.net.Uri
+import android.provider.ContactsContract
+import android.provider.ContactsContract.RawContacts
+import android.provider.ContactsContract.RawContacts.getContactLookupUri
+import androidx.core.content.contentValuesOf
+import at.bitfire.synctools.mapping.contacts.Contact
+import at.bitfire.synctools.storage.BatchOperation
+import at.bitfire.synctools.storage.contacts.AndroidAddressBook
+import at.bitfire.synctools.storage.contacts.AndroidContact
+import at.bitfire.synctools.storage.contacts.AndroidContactFactory
+import com.google.common.base.MoreObjects
+import java.util.Optional
+import kotlin.jvm.optionals.getOrNull
+
+class LocalContact: AndroidContact, LocalAddress {
+
+    companion object {
+        const val COLUMN_FLAGS = RawContacts.SYNC4
+        const val COLUMN_HASHCODE = RawContacts.SYNC3
+    }
+
+    override val addressBook: LocalAddressBook
+        get() = super.addressBook as LocalAddressBook
+
+    override val scheduleTag: String?
+        get() = null
+
+    override var flags: Int = 0
+
+
+    constructor(addressBook: LocalAddressBook, values: ContentValues): super(addressBook, values) {
+        flags = values.getAsInteger(COLUMN_FLAGS) ?: 0
+    }
+
+    constructor(addressBook: LocalAddressBook, contact: Contact, fileName: String?, eTag: String?, _flags: Int): super(addressBook, contact, fileName, eTag) {
+        flags = _flags
+    }
+
+    /**
+     * Clears cached contact (that is used by [getContact]) so that the next call of [getContact]
+     * will query the content provider again.
+     */
+    fun clearCachedContact() {
+        setContact(null)
+    }
+
+    override fun clearDirty(fileName: Optional<String>, eTag: String?, scheduleTag: String?) {
+        if (scheduleTag != null)
+            throw IllegalArgumentException("Contacts must not have a Schedule-Tag")
+
+        val values = ContentValues(4)
+        if (fileName.isPresent)
+            values.put(COLUMN_FILENAME, fileName.get())
+        values.put(COLUMN_ETAG, eTag)
+        values.put(RawContacts.DIRTY, 0)
+
+        // Android 7 workaround
+        addressBook.dirtyVerifier.getOrNull()?.setHashCodeColumn(this, values)
+
+        addressBook.provider!!.update(rawContactSyncURI(), values, null, null)
+
+        if (fileName.isPresent)
+            this.fileName = fileName.get()
+        this.eTag = eTag
+    }
+
+    fun resetDirty() {
+        val values = contentValuesOf(RawContacts.DIRTY to 0)
+        addressBook.provider!!.update(rawContactSyncURI(), values, null, null)
+    }
+
+    override fun update(data: Contact, fileName: String?, eTag: String?, scheduleTag: String?, flags: Int) {
+        this.fileName = fileName
+        this.eTag = eTag
+        this.flags = flags
+
+        // processes this.{fileName, eTag, flags} and resets DIRTY flag
+        update(data)
+    }
+
+    override fun updateFlags(flags: Int) {
+        val values = contentValuesOf(COLUMN_FLAGS to flags)
+        addressBook.provider!!.update(rawContactSyncURI(), values, null, null)
+
+        this.flags = flags
+    }
+
+    override fun updateSequence(sequence: Int) = throw NotImplementedError()
+
+    override fun updateUid(uid: String) {
+        val values = contentValuesOf(COLUMN_UID to uid)
+        addressBook.provider!!.update(rawContactSyncURI(), values, null, null)
+    }
+
+    override fun deleteLocal() {
+        delete()
+    }
+
+    override fun resetDeleted() {
+        val values = contentValuesOf(ContactsContract.Groups.DELETED to 0)
+        addressBook.provider!!.update(rawContactSyncURI(), values, null, null)
+    }
+
+    override fun getDebugSummary() =
+        MoreObjects.toStringHelper(this)
+            .add("id", id)
+            .add("fileName", fileName)
+            .add("eTag", eTag)
+            .add("flags", flags)
+            /*.add("contact",
+                try {
+                    // too dangerous, may contain unknown properties and cause another OOM
+                    Ascii.truncate(getContact().toString(), 1000, "…")
+                } catch (e: Exception) {
+                    e
+                }
+            )*/
+            .toString()
+
+    override fun getViewUri(context: Context): Uri? =
+        id?.let { idNotNull ->
+            getContactLookupUri(
+                context.contentResolver,
+                ContentUris.withAppendedId(RawContacts.CONTENT_URI, idNotNull)
+            )
+        }
+
+
+    // data rows
+
+    override fun buildContact(builder: BatchOperation.CpoBuilder, update: Boolean) {
+        builder.withValue(COLUMN_FLAGS, flags)
+        super.buildContact(builder, update)
+    }
+
+
+    // factory
+
+    object Factory: AndroidContactFactory<LocalContact> {
+        override fun fromProvider(addressBook: AndroidAddressBook<LocalContact, *>, values: ContentValues) =
+                LocalContact(addressBook as LocalAddressBook, values)
+    }
+
+}

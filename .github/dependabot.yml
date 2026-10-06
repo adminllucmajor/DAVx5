@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    # Workflow files stored in the default location of `.github/workflows`
+    # You don't need to specify `/.github/workflows` for `directory`. You can use `directory: "/"`.
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "[CI] "
+    labels:
+      - "ci-cd"
+      - "dependencies"
+    groups:
+      ci-actions:
+        patterns: ["*"]
+        
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:             # don't create "java" label (default for gradle ecosystem)
+      - "dependencies"
+    groups:
+      app-dependencies:
+        patterns: ["*"]
+    ignore:
+      # dependencies without semantic versioning
+      - dependency-name: "com.github.bitfireat:cert4android"
+      - dependency-name: "com.github.bitfireat:dav4jvm"
+      - dependency-name: "com.github.bitfireat:synctools"
