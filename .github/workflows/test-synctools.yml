@@ -19,8 +19,8 @@ jobs:
     if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21   # keep in sync with gradle/gradle-daemon-jvm.properties
@@ -38,8 +38,8 @@ jobs:
     name: Unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21   # keep in sync with gradle/gradle-daemon-jvm.properties
@@ -75,8 +75,8 @@ jobs:
         with:
           cache-encryption-key: ${{ secrets.gradle_encryption_key }}
           cache-read-only: true
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21   # keep in sync with gradle/gradle-daemon-jvm.properties
@@ -85,7 +85,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Restore F-Droid APKs from cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.apk-dir }}
           key: fdroid-apks
@@ -118,7 +118,7 @@ jobs:
           done
 
       - name: Cache F-Droid APKs
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.apk-dir }}
           key: fdroid-apks-${{ hashFiles(format('{0}/*.apk', env.apk-dir)) }}
